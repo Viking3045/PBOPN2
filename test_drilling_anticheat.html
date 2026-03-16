@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Інтерактивний практикум: Напрямки заходів безпеки</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #f4f7f6;
+            --card-bg: #ffffff;
+            --primary: #2c3e50;
+            --secondary: #18bc9c;
+            --btn-default: #ecf0f1;
+            --btn-hover: #bdc3c7;
+            --correct: #2ecc71;
+            --warning: #f39c12;
+            --wrong: #e74c3c;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--primary);
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        /* Блок ідентифікації студента */
+        .student-info {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            border-left: 5px solid var(--primary);
+        }
+
+        .student-info input {
+            flex: 1;
+            min-width: 250px;
+            padding: 12px;
+            font-size: 1.1em;
+            border: 1px solid #bdc3c7;
+            border-radius: 6px;
+            outline: none;
+        }
+
+        .student-info input:focus {
+            border-color: var(--secondary);
+            box-shadow: 0 0 5px rgba(24, 188, 156, 0.3);
+        }
+
+        /* Блок попередження про контроль списування */
+        .anti-cheat-warning {
+            display: none;
+            background-color: #fdf2e9;
+            color: #e74c3c;
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid #e74c3c;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        /* Кастомне модальне вікно (щоб уникнути зациклення alert) */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.75);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 450px;
+            text-align: center;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            animation: popIn 0.3s ease-out;
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .modal-content h2 { color: var(--wrong); margin-top: 0; margin-bottom: 15px;}
+        .modal-btn {
+            background-color: var(--primary); color: #fff; border: none; 
+            padding: 12px 25px; font-size: 1.1em; font-weight: bold; border-radius: 6px; 
+            cursor: pointer; margin-top: 20px; transition: 0.2s;
+        }
+        .modal-btn:hover { background-color: #1a252f; }
+
+        .instructions {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            margin-bottom: 30px;
+            border-left: 5px solid var(--secondary);
+        }
+
+        .instructions h3 { margin-top: 0; }
+
+        .question-card {
+            background-color: var(--card-bg);
+            padding: 20px 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.08);
+            margin-bottom: 25px;
+            border-top: 3px solid #ddd;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .question-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.12);
+        }
+
+        .card-left { flex: 1; display: flex; flex-direction: column; }
+        .card-right {
+            flex: 1; display: flex; flex-direction: column; background-color: #fcfcfc;
+            padding: 15px; border-radius: 8px; border: 1px dashed #e0e0e0;
+        }
+
+        .question-text { font-size: 1.15em; font-weight: 500; margin-bottom: 20px; }
+
+        .options { display: flex; flex-direction: column; gap: 10px; margin-top: auto; }
+
+        .option-btn {
+            padding: 12px 15px; border: 2px solid transparent; border-radius: 6px;
+            background-color: var(--btn-default); cursor: pointer; font-size: 1em;
+            text-align: left; transition: all 0.2s; font-weight: 500;
+        }
+
+        .option-btn:hover:not(:disabled) { background-color: var(--btn-hover); }
+        .option-btn.selected { border-color: var(--primary); background-color: #dbe4eb; }
+
+        .user-reasoning {
+            width: 100%; flex-grow: 1; min-height: 100px; padding: 12px;
+            border: 1px solid #bdc3c7; border-radius: 6px; font-family: inherit; font-size: 1em;
+            resize: vertical; margin-bottom: 15px; box-sizing: border-box;
+        }
+        .user-reasoning:focus { outline: none; border-color: var(--secondary); box-shadow: 0 0 5px rgba(24, 188, 156, 0.3); }
+        .user-reasoning:read-only { background-color: #f1f3f5; color: #555; border-color: #ddd; }
+
+        .submit-container { text-align: center; margin: 40px 0; }
+
+        #submit-btn {
+            background-color: var(--secondary); color: #fff; border: none; padding: 15px 40px;
+            font-size: 1.2em; font-weight: bold; border-radius: 8px; cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.15); transition: background-color 0.3s;
+        }
+        #submit-btn:hover { background-color: #128f76; }
+
+        #results-container {
+            display: none; background-color: #fff; padding: 30px; border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; margin-bottom: 40px;
+            border: 2px solid var(--secondary);
+        }
+
+        .option-btn.correct { background-color: var(--correct); color: white; border-color: var(--correct); }
+        .option-btn.wrong { background-color: var(--wrong); color: white; border-color: var(--wrong); opacity: 0.8; }
+
+        .feedback {
+            padding: 15px; background-color: #e8f8f5; border-left: 4px solid var(--secondary);
+            font-size: 1em; display: none; border-radius: 0 4px 4px 0;
+        }
+
+        .action-btns { display: flex; justify-content: center; gap: 15px; margin-top: 30px; }
+
+        .btn-reload, .btn-download {
+            padding: 12px 25px; cursor: pointer; border-radius: 5px; border: none;
+            font-size: 1.1em; color: white; font-weight: bold;
+        }
+        .btn-reload { background-color: var(--primary); }
+        .btn-download { background-color: #e74c3c; } 
+        .btn-download:hover { background-color: #c0392b; }
+
+        @media (min-width: 768px) { .question-card { flex-direction: row; } }
+    </style>
+</head>
+<body>
+
+<div class="modal-overlay" id="cheat-modal">
+    <div class="modal-content">
+        <h2>УВАГА! Порушення правил.</h2>
+        <p style="font-size: 1.1em; color: #555;">Зафіксовано вихід з вікна тестування або перемикання на іншу вкладку.</p>
+        <p style="font-size: 1.2em;">Це порушення №<strong id="cheat-modal-count" style="color: var(--wrong); font-size: 1.3em;"></strong></p>
+        <p><small style="color: #7f8c8d;">Дані про цю спробу будуть автоматично внесені до фінального звіту для викладача.</small></p>
+        <button class="modal-btn" onclick="closeCheatModal()">Я зрозумів</button>
+    </div>
+</div>
+
+<div class="container">
+    <h1>Нормативна база: Заходи безпеки</h1>
+    <div class="subtitle">Тренажер з автоматичною генерацією PDF-звіту (НГВУ)</div>
+    
+    <div class="anti-cheat-warning" id="cheat-warning"></div>
+
+    <div class="student-info">
+        <input type="text" id="student-name" placeholder="П.І.Б. здобувача вищої освіти" required>
+        <input type="text" id="student-group" placeholder="Група (наприклад, ПБк-22-1)" required>
+    </div>
+
+    <div class="instructions">
+        <h3>Завдання:</h3>
+        <p>1. Прочитайте витяг з нормативного документа ліворуч.<br>
+           2. Визначте напрямок превентивного пожежо-/вибухозахисту та оберіть відповідний варіант (в деяких питаннях вірними можуть бути різні варіанти відповідей).<br>
+           3. <strong>Праворуч у текстовому полі коротко аргументуйте свій вибір.</strong><br>
+           4. Натисніть «Завершити тест».<br>
+           5. Після перевірки ви зможете переглянути правильні відповіді та згенерувати PDF-звіт.</p>
+        <ul>
+            <li><strong style="color: #3498db;">1. Обмеження утворення горючого середовища.</strong> </li>
+            <li><strong style="color: #e67e22;">2. Обмеження утворення джерел запалювання.</strong> </li>
+            <li><strong style="color: #e74c3c;">3. Обмеження розповсюдження полум'я / аварії.</strong> </li>
+        </ul>
+    </div>
+
+    <div id="quiz"></div>
+
+    <div class="submit-container">
+        <button id="submit-btn">Завершити тест та перевірити результати</button>
+    </div>
+
+    <div id="results-container">
+        <h2>Тестування завершено</h2>
+        <p>Перегляньте ваші результати та пояснення у картках вище.</p>
+        <div id="score-text" style="font-size: 1.5em; margin: 20px 0;"></div>
+        
+        <div class="action-btns">
+            <button class="btn-download" id="download-btn" onclick="exportToPDF()">Завантажити PDF-звіт</button>
+            <button class="btn-reload" onclick="location.reload()">Пройти тест спочатку</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- ВДОСКОНАЛЕНА ANTI-CHEAT СИСТЕМА (Без alert) ---
+    let cheatCount = 0;
+    let testFinished = false;
+    let isModalOpen = false;
+
+    function showCheatWarning() {
+        if (testFinished || isModalOpen) return;
+        
+        cheatCount++;
+        isModalOpen = true;
+        
+        document.getElementById('cheat-modal-count').innerText = cheatCount;
+        document.getElementById('cheat-modal').style.display = 'flex';
+        
+        const warningBanner = document.getElementById('cheat-warning');
+        warningBanner.style.display = 'block';
+        warningBanner.innerHTML = `Увага! Зафіксовано спроб порушення фокусу екрана: <strong style="font-size: 1.2em;">${cheatCount}</strong>`;
+    }
+
+    window.closeCheatModal = function() {
+        document.getElementById('cheat-modal').style.display = 'none';
+        setTimeout(() => { isModalOpen = false; }, 300);
+    }
+
+    document.addEventListener("visibilitychange", () => {
+        if (document.hidden) showCheatWarning();
+    });
+
+    window.addEventListener("blur", () => {
+        if (!document.hidden) showCheatWarning();
+    });
+    // ----------------------------------------------------
+
+    const questions = [
+        // Правила безпеки в нафтогазодобувній промисловості
+        { text: "У закритих робочих приміщеннях повинна бути влаштована система вентиляції, що забезпечує повітрообмін нормативної кратності, з урахуванням характеру виробничого процесу і фізичного навантаження на працівників.", category: 1, explanation: "Вентиляція розбавляє та видаляє гази, не допускаючи утворення горючої/вибухонебезпечної суміші з киснем." },
+        { text: "Рух транспортних засобів по території вибухопожежонебезпечного об’єкта дозволяється тільки із застосуванням іскрогасників.", category: 2, explanation: "Іскрогасник виключає викид розпечених частинок (іскор) з вихлопної системи двигуна — прямого джерела запалювання." },
+        { text: "В охоронній зоні... необхідним є влаштування вільних від рослинності протипожежних смуг завширшки не менше ніж 4 метри...", category: 3, explanation: "Протипожежні смуги є фізичним бар'єром, що запобігає розповсюдженню полум'я (особливо при степових/лісових пожежах)." },
+        { text: "Забороняється прибудовувати побутові та адміністративні приміщення до будівель з вибухонебезпечними об’єктами і розміщувати їх у зоні дії ударної хвилі.", category: 3, explanation: "Об'ємно-планувальні рішення (розриви, зонування) обмежують наслідки та розповсюдження руйнувань у разі вибуху." },
+        { text: "Відстані між окремими об’єктами при облаштуванні родовищ... визначаються під час проєктування згідно з ДБН Б.2.2-12:2019.", category: 3, explanation: "Протипожежні розриви між об'єктами не дають вогню перекинутися на сусідні будівлі та споруди." },
+        { text: "Будинки, приміщення та споруди повинні обладнуватися системами протипожежного захисту... та вогнезахисту.", category: 3, explanation: "Системи захисту (сигналізація, гасіння) та вогнезахисна обробка конструкцій стримують розвиток пожежі." },
+        { text: "У газонебезпечних і пожежонебезпечних місцях... повинно бути встановлено контрольно-вимірювальну апаратуру для автоматичного вимірювання концентрації газів...", category: 1, explanation: "Газоаналізатори контролюють саме параметри середовища до того моменту, як воно стане здатним до горіння (НКМПП)." },
+        { text: "Шкідливі для здоров’я речовини, які можуть накопичуватись у повітрі робочих зон, повинні відсмоктуватись у місцях їх витоку...", category: 1, explanation: "Місцеве відсмоктування (витяжка) напряму перешкоджає утворенню горючої газоповітряної хмари." },
+        { text: "Перед пуском обладнання... повинні передбачатися заходи щодо запобігання утворенню вибухонебезпечних сумішей (продування інертним газом)...", category: 1, explanation: "Інертний газ (наприклад, азот) витісняє кисень, роблячи середовище негорючим." },
+        { text: "Температура зовнішніх поверхонь обладнання і кожухів... не повинна перевищувати температури самозаймання...", category: 2, explanation: "Нагріті поверхні є тепловим джерелом запалювання для горючих речовин, що контактують з ними." },
+        { text: "У вибухонебезпечних приміщеннях... слід застосовувати інструмент, виготовлений з безіскрових матеріалів.", category: 2, explanation: "Використання обмідненого інструменту запобігає утворенню механічних іскор під час ударів." },
+        { text: "Електрообладнання, що встановлюється у вибухонебезпечних зонах класів 0, 1, 2, повинно мати відповідний рівень вибухозахисту (Ex)...", category: 2, explanation: "Вибухозахищене виконання не дає електричній іскрі всередині приладу підпалити зовнішнє середовище." },
+        { text: "Захист від блискавки нафтогазопромислових об’єктів повинен здійснюватися відповідно до вимог ДСТУ...", category: 2, explanation: "Блискавка — потужне природне електричне джерело запалювання." },
+        { text: "Роботи всередині закритих просторів... повинні проводитися в одязі з матеріалів, що не електризуються.", category: 2, explanation: "Антистатичний спецодяг запобігає виникненню іскри від розряду статичної електрики з тіла людини." },
+        { text: "Нові типи бурових установок... повинні відповідати вимогам вибухобезпеки.", category: 2, explanation: "Конструктивне унеможливлення іскроутворення та перегріву вузлів механізмів." },
+        { text: "Лінії скидання на факели від блоків глушіння та дроселювання повинні мати довжину не менше ніж 30-100 м.", category: 3, explanation: "Протипожежний розрив. Дистанціювання палаючого факела запобігає розповсюдженню вогню на саму бурову установку." },
+        { text: "Блоки насосних агрегатів... повинні мати обладнання для їх автоматичного аварійного відключення в разі нагрівання до температури самозаймання...", category: 2, explanation: "Автоматика блокує нагрівання до критичних температур, що могло б стати джерелом запалювання." },
+        { text: "Кожен окремо розташований резервуар (або групу) необхідно огороджувати суцільним земляним або бетонним обвалуванням...", category: 3, explanation: "Обвалування створює «ванну», яка не дає розлитій палаючій нафті розтікатися територією." },
+        { text: "Факельні колектори повинні обладнуватися вогнеперегороджувальними клапанами.", category: 3, explanation: "Вогнеперешкоджувачі (полум'ягасники) фізично зупиняють розповсюдження полум'я всередині труби у зворотному напрямку." },
+        { text: "За необхідності встановлювати протипожежні стіни з метою відокремлення ділянок з ризиком виникнення та поширення пожежі.", category: 3, explanation: "Протипожежні стіни безпосередньо блокують поширення вогню та теплового випромінювання." },
+
+        // Правила розробки нафтових і газових родовищ
+        { text: "Система збору та вимірювання продукції свердловин має бути герметизована і забезпечувати раціональне використання енергії пласта...", category: 1, explanation: "Герметизація — основний захід, що утримує флюїд всередині труби і не дає йому утворити горючу суміш з повітрям (киснем)." },
+        { text: "Обладнання для запобігання відкритому фонтануванню... має забезпечувати герметичне перекриття стовбура свердловини в разі розгерметизації устя.", category: [1, 3], explanation: "Превентори та противибухове обладнання локалізують аварію, відсікаючи приплив палива з пласта (обмеження як утворення горючого середовища так і розповсюдження надзвичайної ситуації)." },
+        { text: "Обладнання видобувних свердловин вибійними та устьовими відсікачами з метою запобігання витіканню нафти і газу на випадок розриву трубопроводів...", category: 3, explanation: "Автоматичні відсікачі блокують поширення аварії та пожежі, перекриваючи потік вуглеводнів до місця розриву." },
+        { text: "Відстань від газових свердловин... до житлових будинків населених пунктів повинна бути не менше 300 метрів.", category: 3, explanation: "Санітарно-захисні та протипожежні зони гарантують, що аварія на свердловині не розповсюдиться на цивільну інфраструктуру." },
+        { text: "Застосування закритої герметичної системи збору, промислової підготовки і транспорту продукції свердловин...", category: 1, explanation: "Закрита система унеможливлює вихід газів у робоче середовище." },
+        { text: "Повна утилізація попутного (розчиненого) та газліфтного газів...", category: 1, explanation: "Утилізація виключає безконтрольне виділення горючих газів в атмосферу об'єкта." },
+
+        // Правила безпеки в акваторіях (Шельф)
+        { text: "У випадку загоряння у приміщеннях морського нафтогазового об’єкту не допускається одночасне включення автоматичного пожежогасіння та протидимової вентиляції.", category: 3, explanation: "Включена вентиляція під час гасіння видалить вогнегасну речовину і додасть кисню, сприяючи розповсюдженню пожежі." },
+        { text: "З метою захисту від статичної електрики необхідно заземлювати металеву арматуру, резервуари, зливно-наливні пристрої...", category: 2, explanation: "Заземлення відводить статичний заряд, унеможливлюючи утворення іскри під час наливу флюїдів." },
+        { text: "На початку і в кінці підводного трубопроводу повинні бути встановлені автоматичні запірні пристрої для його відключення в аварійних ситуаціях.", category: 3, explanation: "Клапани секціонують трубопровід, обмежуючи обсяг витоку і можливе розповсюдження пожежі на морі." },
+        { text: "З метою попередження проявів статичної електрики наповнення місткостей зберігання пально-мастильних матеріалів необхідно забезпечити 'під рівень'.", category: 2, explanation: "Налив 'під рівень' (без падаючого струменя) запобігає електризації рідини і виникненню іскри." },
+        { text: "Продування, розряджування та прокачування комунікацій... Газ продування повинен подаватися в газовідвід.", category: 1, explanation: "Організоване відведення газу виключає утворення горючої хмари на робочій палубі." },
+        { text: "Із метою запобігання спалаху відкритого фонтана від статичної електрики... введення води в струмінь фонтана з витратою не менше 20 л/с...", category: 2, explanation: "Вода зволожує струмінь і знімає статику, що генерується тертям фонтануючого газу (блокування джерела запалювання)." },
+        { text: "Під час ліквідування відкритого фонтана необхідно постійно зрошувати металеві конструкції платформи... водяними струменями...", category: 3, explanation: "Водяне зрошення конструкцій (водяні завіси) не дає їм нагрітися і деформуватися, обмежуючи розповсюдження пожежі." },
+        { text: "Відстань між трасою підводного трубопроводу і морським нафтогазовим об’єктом повинна бути не менше 100 м.", category: 3, explanation: "Просторовий розрив на випадок розгерметизації та загоряння газу на поверхні води." },
+        { text: "Об'єкти групових установок, технологічний процес яких пов'язаний із застосуванням вогню, повинні розташовуватися на відстані не менше 15 м від апаратів з газом...", category: [2, 3], explanation: "Забезпечується як відгороджування вогневого впливу (джерела запалювання) так і нормований протипожежний розрив між технологічним вогнем та вуглеводневим середовищем (поширення полум'я)." },
+        { text: "На всіх морських свердловинах необхідно встановлювати на усті чотири превентори, у тому числі один превентор із зрізаючими плашками...", category: 3, explanation: "Превентори (особливо зрізаючі) — це крайній рубіж захисту від розповсюдження фонтану та розвитку аварії." },
+        { text: "За наявності блока спалювання перед початком випробування слід включити систему водяного зрошування (завіси) корпусу морського нафтогазового об’єкту...", category: 3, explanation: "Водяна завіса блокує теплове випромінювання від факела, не даючи пожежі поширитися на платформу." },
+        { text: "На морському нафтогазовому об’єкті допускається використання тільки електроустановок з ізольованою нейтраллю... з автоматичним відімкненням аварійних ділянок у разі зниження опору ізоляції.", category: 2, explanation: "Запобігає утворенню короткого замикання та іскріння через струми витоку." }
+    ];
+
+    const quizContainer = document.getElementById('quiz');
+    let userAnswers = new Array(questions.length).fill(null);
+
+    const categoryNames = {
+        1: "Обмеження утворення горючого середовища",
+        2: "Обмеження джерел запалювання",
+        3: "Обмеження розповсюдження полум'я"
+    };
+
+    function renderQuiz() {
+        questions.forEach((q, index) => {
+            const card = document.createElement('div');
+            card.className = 'question-card';
+            
+            const cardLeft = document.createElement('div');
+            cardLeft.className = 'card-left';
+            
+            const questionText = document.createElement('div');
+            questionText.className = 'question-text';
+            questionText.innerHTML = `<span style="color:var(--secondary); font-weight:bold;">Пункт ${index + 1}:</span> ${q.text}`;
+            
+            const optionsDiv = document.createElement('div');
+            optionsDiv.className = 'options';
+
+            const opt1 = createOptionButton(1, "1. Горюче середовище", index);
+            const opt2 = createOptionButton(2, "2. Джерела запалювання", index);
+            const opt3 = createOptionButton(3, "3. Розповсюдження полум'я", index);
+
+            optionsDiv.appendChild(opt1);
+            optionsDiv.appendChild(opt2);
+            optionsDiv.appendChild(opt3);
+
+            cardLeft.appendChild(questionText);
+            cardLeft.appendChild(optionsDiv);
+
+            const cardRight = document.createElement('div');
+            cardRight.className = 'card-right';
+
+            const reasoningLabel = document.createElement('div');
+            reasoningLabel.innerHTML = '<strong>Ваша аргументація:</strong>';
+            reasoningLabel.style.marginBottom = '8px';
+            reasoningLabel.style.color = 'var(--primary)';
+
+            const reasoningInput = document.createElement('textarea');
+            reasoningInput.className = 'user-reasoning';
+            reasoningInput.placeholder = 'Обґрунтуйте свій вибір тут...';
+            reasoningInput.id = `reasoning-${index}`;
+
+            const feedback = document.createElement('div');
+            feedback.className = 'feedback';
+            feedback.id = `feedback-${index}`;
+            feedback.innerHTML = `<strong>Еталонне пояснення:</strong><br>${q.explanation}`;
+
+            cardRight.appendChild(reasoningLabel);
+            cardRight.appendChild(reasoningInput);
+            cardRight.appendChild(feedback);
+
+            card.appendChild(cardLeft);
+            card.appendChild(cardRight);
+            
+            quizContainer.appendChild(card);
+        });
+    }
+
+    function createOptionButton(catValue, text, questionIndex) {
+        const btn = document.createElement('button');
+        btn.className = 'option-btn';
+        btn.innerText = text;
+        btn.dataset.category = catValue;
+        
+        btn.addEventListener('click', function() {
+            const siblings = this.parentElement.children;
+            for(let btn of siblings) {
+                btn.classList.remove('selected');
+            }
+            this.classList.add('selected');
+            userAnswers[questionIndex] = catValue;
+        });
+
+        return btn;
+    }
+
+    document.getElementById('submit-btn').addEventListener('click', function() {
+        const studName = document.getElementById('student-name').value.trim();
+        const studGroup = document.getElementById('student-group').value.trim();
+
+        if (!studName || !studGroup) {
+            alert("Будь ласка, введіть ваші П.І.Б. та групу на початку сторінки!");
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+        }
+
+        if (userAnswers.includes(null)) {
+            alert("Будь ласка, оберіть категорію для кожного запитання перед перевіркою!");
+            return;
+        }
+
+        // === БЛОКУЄМО АНТИЧИТ ПРИ ЗАВЕРШЕННІ ===
+        testFinished = true;
+        document.getElementById('cheat-warning').style.display = 'none';
+
+        let score = 0;
+        const optionGroups = document.querySelectorAll('.options');
+        const textareas = document.querySelectorAll('.user-reasoning');
+
+        userAnswers.forEach((ans, index) => {
+            const correctCat = questions[index].category;
+            const buttons = optionGroups[index].children;
+
+            textareas[index].readOnly = true;
+
+            for(let btn of buttons) {
+                btn.disabled = true; 
+                const btnCat = parseInt(btn.dataset.category);
+                
+                if (btnCat === correctCat) {
+                    btn.classList.add('correct'); 
+                } else if (btnCat === ans && ans !== correctCat) {
+                    btn.classList.add('wrong'); 
+                }
+            }
+
+            document.getElementById(`feedback-${index}`).style.display = 'block';
+
+            if (ans === correctCat) {
+                score++;
+            }
+        });
+
+        // Ховаємо кнопку "Завершити тест"
+        this.style.display = 'none';
+        
+        // Розрахунок підсумкового бала
+        const finalGradeStr = (score / 12.6).toFixed(1);
+        const finalGradeNum = parseFloat(finalGradeStr);
+        
+        let gradeColorVar = "";
+        let docGradeColor = "";
+
+        if (finalGradeNum < 0.5) {
+            gradeColorVar = "var(--wrong)"; // Червоний
+            docGradeColor = "#e74c3c";
+        } else if (finalGradeNum >= 0.5 && finalGradeNum < 2.5) {
+            gradeColorVar = "var(--warning)"; // Жовтий
+            docGradeColor = "#f39c12";
+        } else {
+            gradeColorVar = "var(--correct)"; // Зелений
+            docGradeColor = "#2ecc71";
+        }
+
+        window.finalScore = score;
+        window.finalGradeStr = finalGradeStr;
+        window.docGradeColor = docGradeColor;
+        window.finalCheatCount = cheatCount;
+
+        const resultsContainer = document.getElementById('results-container');
+        const scoreText = document.getElementById('score-text');
+        
+        let cheatAlertHtml = cheatCount > 0 
+            ? `<div style="color: red; font-size: 0.8em; margin-top: 15px; font-weight: bold;">Спроб списування (втрата фокусу): ${cheatCount}</div>` 
+            : `<div style="color: green; font-size: 0.8em; margin-top: 15px; font-weight: bold;">Спроб списування не зафіксовано</div>`;
+
+        resultsContainer.style.display = 'block';
+        scoreText.innerHTML = `
+            <div>Вірних відповідей: <strong>${score} з ${questions.length}</strong></div>
+            <div style="margin-top: 10px;">Підсумковий бал: <span style="color: ${gradeColorVar}; font-size: 1.3em;">${finalGradeStr}</span></div>
+            ${cheatAlertHtml}
+        `;
+        
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    });
+
+    // Функція генерації PDF тепер викликається виключно натисканням кнопки "Завантажити PDF-звіт"
+    function exportToPDF() {
+        const studName = document.getElementById('student-name').value.trim() || "Анонім";
+        const studGroup = document.getElementById('student-group').value.trim() || "Не вказано";
+        const totalScore = window.finalScore || 0;
+        const grade = window.finalGradeStr || "0.0";
+        const gradeColor = window.docGradeColor || "#000000";
+        const recordedCheats = window.finalCheatCount || 0;
+
+        let cheatHtml = recordedCheats > 0 
+            ? `<p style="margin: 5px 0; font-size: 16px; color: red;"><strong>Зафіксовано порушень (вихід з вікна):</strong> ${recordedCheats}</p>`
+            : `<p style="margin: 5px 0; font-size: 16px; color: green;"><strong>Порушень не зафіксовано</strong></p>`;
+
+        // Створюємо прихований контейнер для формування структури PDF
+        const reportDiv = document.createElement('div');
+        reportDiv.style.padding = '20px';
+        reportDiv.style.fontFamily = 'Arial, sans-serif';
+        reportDiv.style.color = '#333';
+        reportDiv.style.fontSize = '14px';
+
+        let content = `
+            <div style="text-align: center; margin-bottom: 20px;">
+                <h2 style="color: #2c3e50; margin-bottom: 5px;">Звіт з виконання інтерактивного практикуму</h2>
+                <h3 style="color: #2c3e50; margin-top: 0;">Тема: Класифікація інженерно-технічних заходів пожежо- та вибухобезпеки</h3>
+            </div>
+            <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px; border-left: 5px solid #2c3e50;">
+                <p style="margin: 5px 0;"><strong>Здобувач вищої освіти:</strong> ${studName}</p>
+                <p style="margin: 5px 0;"><strong>Група:</strong> ${studGroup}</p>
+                <p style="margin: 5px 0;"><strong>Результат тесту:</strong> ${totalScore} з ${questions.length} вірних відповідей</p>
+                <p style="margin: 5px 0; font-size: 16px;"><strong>Підсумковий бал:</strong> <span style="color: ${gradeColor}; font-weight: bold;">${grade}</span></p>
+                ${cheatHtml}
+            </div>
+            <hr style="border: 1px solid #ddd; margin-bottom: 20px;">
+        `;
+
+        questions.forEach((q, index) => {
+            const userAnswerCode = userAnswers[index];
+            const userChoiceStr = userAnswerCode ? categoryNames[userAnswerCode] : "Не обрано";
+            const correctChoiceStr = categoryNames[q.category];
+            const isCorrect = (userAnswerCode === q.category);
+            
+            const reasoningElement = document.getElementById(`reasoning-${index}`);
+            const reasoning = reasoningElement ? reasoningElement.value.trim() : "";
+
+            content += `
+                <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #eee; page-break-inside: avoid;">
+                    <h4 style="margin: 0 0 8px 0; color: #2c3e50;">Питання ${index + 1}</h4>
+                    <p style="margin: 0 0 8px 0; font-style: italic;">${q.text}</p>
+                    <p style="margin: 0 0 5px 0;">
+                        <strong>Вибір студента:</strong> 
+                        <span style="color: ${isCorrect ? 'green' : 'red'}; font-weight: bold;">${userChoiceStr}</span>
+                    </p>
+            `;
+            
+            if (!isCorrect) {
+                content += `<p style="margin: 0 0 5px 0;"><strong>Правильний напрямок:</strong> ${correctChoiceStr}</p>`;
+            }
+            
+            content += `
+                    <p style="margin: 0 0 8px 0;"><strong>Аргументація студента:</strong> <span style="color: #555;">${reasoning ? reasoning : "Відсутня"}</span></p>
+                    <div style="background-color: #e8f8f5; padding: 10px; border-left: 4px solid #18bc9c;">
+                        <strong>Еталонне пояснення:</strong> ${q.explanation}
+                    </div>
+                </div>
+            `;
+        });
+
+        reportDiv.innerHTML = content;
+
+        // Конфігурація для генерації PDF
+        const safeName = studName.split(' ')[0].replace(/[^a-zа-яіїєґ0-9]/gi, '_') || "Student";
+        const opt = {
+            margin:       10,
+            filename:     `Zvit_Praktikum_${safeName}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        // Виконуємо конвертацію HTML -> PDF
+        html2pdf().set(opt).from(reportDiv).save();
+    }
+
+    renderQuiz();
+</script>
+
+</body>
+</html>
