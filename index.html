@@ -264,7 +264,7 @@
         <div id="score-text" style="font-size: 1.5em; margin: 20px 0;"></div>
         
         <div class="action-btns">
-            <button class="btn-download" id="download-btn" onclick="exportToPDF()">Завантажити PDF-звіт</button>
+            <button class="btn-download" id="download-btn" onclick="exportToDoc()">Завантажити PDF-звіт</button>
             <button class="btn-reload" onclick="location.reload()">Пройти тест спочатку</button>
         </div>
     </div>
@@ -275,6 +275,41 @@
     let cheatCount = 0;
     let testFinished = false;
     let isModalOpen = false;
+
+    // --- ФУНКЦІЯ ГЕНЕРАЦІЇ ЗВУКОВОЇ СИРЕНИ ---
+    function playAlertSound() {
+        try {
+            // Створюємо аудіо-контекст
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            const ctx = new AudioContext();
+            
+            // Створюємо генератор звуку та регулятор гучності
+            const oscillator = ctx.createOscillator();
+            const gainNode = ctx.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(ctx.destination);
+            
+            // Налаштовуємо тип звуку (квадратна хвиля дає різкий, тривожний звук)
+            oscillator.type = 'square';
+            // Встановлюємо частоту (висоту тону)
+            oscillator.frequency.setValueAtTime(600, ctx.currentTime); 
+            // Робимо швидке коливання частоти (ефект сирени)
+            oscillator.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.2);
+            
+            // Налаштовуємо гучність (0.1 - щоб не оглушити, але було чутно)
+            gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
+            // Згасання звуку за півсекунди
+            gainNode.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.5);
+            
+            // Запускаємо і зупиняємо звук
+            oscillator.start(ctx.currentTime);
+            oscillator.stop(ctx.currentTime + 0.5);
+        } catch (e) {
+            console.log("Відтворення звуку заблоковано браузером");
+        }
+    }
+    // ----------------------------------------
 
     function showCheatWarning() {
         if (testFinished || isModalOpen) return;
@@ -349,6 +384,18 @@
         { text: "За наявності блока спалювання перед початком випробування слід включити систему водяного зрошування (завіси) корпусу морського нафтогазового об’єкту...", category: 3, explanation: "Водяна завіса блокує теплове випромінювання від факела, не даючи пожежі поширитися на платформу." },
         { text: "На морському нафтогазовому об’єкті допускається використання тільки електроустановок з ізольованою нейтраллю... з автоматичним відімкненням аварійних ділянок у разі зниження опору ізоляції.", category: 2, explanation: "Запобігає утворенню короткого замикання та іскріння через струми витоку." }
     ];
+
+// --- ПЕРЕМІШУВАННЯ МАСИВУ ---
+    function shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+    }
+
+    // Викликаємо функцію для перемішування питань перед їх виведенням на екран
+    shuffleArray(questions);
+    // -----------------------------------------------------------
 
     const quizContainer = document.getElementById('quiz');
     let userAnswers = new Array(questions.length).fill(null);
@@ -522,8 +569,8 @@
         window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
     });
 
-    // Функція генерації PDF тепер викликається виключно натисканням кнопки "Завантажити PDF-звіт"
-    function exportToPDF() {
+    // --- ФУНКЦІЯ ГЕНЕРАЦІЇ ЗВІТУ В ФОРМАТІ DOC (WORD) ---
+    function exportToDoc() {
         const studName = document.getElementById('student-name').value.trim() || "Анонім";
         const studGroup = document.getElementById('student-group').value.trim() || "Не вказано";
         const totalScore = window.finalScore || 0;
@@ -532,79 +579,77 @@
         const recordedCheats = window.finalCheatCount || 0;
 
         let cheatHtml = recordedCheats > 0 
-            ? `<p style="margin: 5px 0; font-size: 16px; color: red;"><strong>Зафіксовано порушень (вихід з вікна):</strong> ${recordedCheats}</p>`
-            : `<p style="margin: 5px 0; font-size: 16px; color: green;"><strong>Порушень не зафіксовано</strong></p>`;
+            ? `<p style="margin: 5px 0; font-size: 16pt; color: red;"><strong>Зафіксовано порушень (вихід з вікна):</strong> ${recordedCheats}</p>`
+            : `<p style="margin: 5px 0; font-size: 16pt; color: green;"><strong>Порушень не зафіксовано</strong></p>`;
 
-        // Створюємо прихований контейнер для формування структури PDF
-        const reportDiv = document.createElement('div');
-        reportDiv.style.padding = '20px';
-        reportDiv.style.fontFamily = 'Arial, sans-serif';
-        reportDiv.style.color = '#333';
-        reportDiv.style.fontSize = '14px';
-
-        let content = `
-            <div style="text-align: center; margin-bottom: 20px;">
-                <h2 style="color: #2c3e50; margin-bottom: 5px;">Звіт з виконання інтерактивного практикуму</h2>
-                <h3 style="color: #2c3e50; margin-top: 0;">Тема: Класифікація інженерно-технічних заходів пожежо- та вибухобезпеки</h3>
-            </div>
-            <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px; border-left: 5px solid #2c3e50;">
-                <p style="margin: 5px 0;"><strong>Здобувач вищої освіти:</strong> ${studName}</p>
-                <p style="margin: 5px 0;"><strong>Група:</strong> ${studGroup}</p>
-                <p style="margin: 5px 0;"><strong>Результат тесту:</strong> ${totalScore} з ${questions.length} вірних відповідей</p>
-                <p style="margin: 5px 0; font-size: 16px;"><strong>Підсумковий бал:</strong> <span style="color: ${gradeColor}; font-weight: bold;">${grade}</span></p>
-                ${cheatHtml}
-            </div>
-            <hr style="border: 1px solid #ddd; margin-bottom: 20px;">
-        `;
+        // Створюємо HTML структуру для Word документа
+        let content = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+        <head>
+            <meta charset='utf-8'>
+            <title>Звіт</title>
+            <style>
+                body { font-family: 'Times New Roman', serif; font-size: 14pt; }
+                h1, h2, h3 { color: #2c3e50; }
+                .correct { color: green; font-weight: bold; }
+                .wrong { color: red; font-weight: bold; }
+                .gray { color: #555; }
+                hr { border: 1px solid #ccc; margin: 20px 0; }
+            </style>
+        </head>
+        <body>`;
+        
+        content += `<h2 style="text-align: center;">Звіт з виконання інтерактивного практикуму</h2>`;
+        content += `<h3 style="text-align: center;">Тема: Класифікація інженерно-технічних заходів пожежо- та вибухобезпеки</h3>`;
+        content += `<p><strong>Здобувач вищої освіти:</strong> ${studName}</p>`;
+        content += `<p><strong>Група:</strong> ${studGroup}</p>`;
+        content += `<p><strong>Результат тесту:</strong> ${totalScore} з ${questions.length} вірних відповідей</p>`;
+        content += `<p><strong>Підсумковий бал:</strong> <span style="color: ${gradeColor}; font-weight: bold; font-size: 16pt;">${grade}</span></p>`;
+        content += cheatHtml;
+        content += `<hr>`;
 
         questions.forEach((q, index) => {
             const userAnswerCode = userAnswers[index];
             const userChoiceStr = userAnswerCode ? categoryNames[userAnswerCode] : "Не обрано";
-            const correctChoiceStr = categoryNames[q.category];
-            const isCorrect = (userAnswerCode === q.category);
+            
+            let correctCats = Array.isArray(q.category) ? q.category : [q.category];
+            const correctChoiceStr = correctCats.map(c => categoryNames[c]).join(' АБО ');
+            const isCorrect = correctCats.includes(userAnswerCode);
             
             const reasoningElement = document.getElementById(`reasoning-${index}`);
             const reasoning = reasoningElement ? reasoningElement.value.trim() : "";
 
-            content += `
-                <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #eee; page-break-inside: avoid;">
-                    <h4 style="margin: 0 0 8px 0; color: #2c3e50;">Питання ${index + 1}</h4>
-                    <p style="margin: 0 0 8px 0; font-style: italic;">${q.text}</p>
-                    <p style="margin: 0 0 5px 0;">
-                        <strong>Вибір студента:</strong> 
-                        <span style="color: ${isCorrect ? 'green' : 'red'}; font-weight: bold;">${userChoiceStr}</span>
-                    </p>
-            `;
+            content += `<h3>Питання ${index + 1}</h3>`;
+            content += `<p><em>Нормативна вимога:</em> ${q.text}</p>`;
             
+            content += `<p><strong>Вибір студента:</strong> <span class="${isCorrect ? 'correct' : 'wrong'}">${userChoiceStr}</span></p>`;
             if (!isCorrect) {
-                content += `<p style="margin: 0 0 5px 0;"><strong>Правильний напрямок:</strong> ${correctChoiceStr}</p>`;
+                content += `<p><strong>Правильний напрямок:</strong> ${correctChoiceStr}</p>`;
             }
             
-            content += `
-                    <p style="margin: 0 0 8px 0;"><strong>Аргументація студента:</strong> <span style="color: #555;">${reasoning ? reasoning : "Відсутня"}</span></p>
-                    <div style="background-color: #e8f8f5; padding: 10px; border-left: 4px solid #18bc9c;">
-                        <strong>Еталонне пояснення:</strong> ${q.explanation}
-                    </div>
-                </div>
-            `;
+            content += `<p><strong>Аргументація студента:</strong> <span class="gray">${reasoning ? reasoning : "Відсутня"}</span></p>`;
+            content += `<p><strong>Еталонне пояснення:</strong> ${q.explanation}</p>`;
+            content += `<hr>`;
         });
 
-        reportDiv.innerHTML = content;
+        content += `</body></html>`;
 
-        // Конфігурація для генерації PDF
+        // Конвертуємо HTML рядок у файл Word
+        const blob = new Blob(['\ufeff', content], { type: 'application/msword' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        
+        // Генеруємо ім'я файлу
         const safeName = studName.split(' ')[0].replace(/[^a-zа-яіїєґ0-9]/gi, '_') || "Student";
-        const opt = {
-            margin:       10,
-            filename:     `Zvit_Praktikum_${safeName}.pdf`,
-            image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true },
-            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        };
-
-        // Виконуємо конвертацію HTML -> PDF
-        html2pdf().set(opt).from(reportDiv).save();
+        link.download = `Zvit_Praktikum_${safeName}.doc`;
+        
+        // Завантажуємо
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 
+    // Ініціалізація додатка
     renderQuiz();
 </script>
 
